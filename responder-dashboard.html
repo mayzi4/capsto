@@ -1,0 +1,294 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responder Dashboard - Barangay Emergency Response</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-shield-alt"></i> Responder Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="responder-dashboard.html" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="emergency-contacts.html"><i class="fas fa-phone"></i> Emergency Contacts</a></li>
+                <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h2>Responder Dashboard</h2>
+                <div class="user-menu">
+                    <span id="userName">Loading...</span>
+                    <div class="user-avatar" id="userAvatar">R</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="activeEmergencies">0</h3>
+                            <p>Active Emergencies</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="myAssignments">0</h3>
+                            <p>My Assignments</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon secondary">
+                            <i class="fas fa-ambulance"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="responding">0</h3>
+                            <p>Responding</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="resolved">0</h3>
+                            <p>Resolved Today</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Active Emergencies</h3>
+                        <button class="btn btn-secondary" onclick="loadEmergencies()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Reporter</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emergenciesTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Emergency Details Modal -->
+    <div id="emergencyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Emergency Details</h3>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="emergencyDetails"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Status Modal -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Emergency Status</h3>
+                <button class="close-modal" onclick="closeStatusModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="statusAlertContainer"></div>
+                <form id="statusForm">
+                    <input type="hidden" id="statusEmergencyId">
+                    <div class="form-group">
+                        <label for="newStatus">New Status</label>
+                        <select id="newStatus" required>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="responding">Responding</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="statusMessage">Message</label>
+                        <textarea id="statusMessage" rows="3" placeholder="Add a message about this update"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Update Status</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if (!requireAuth()) {
+            throw new Error('Not authenticated');
+        }
+
+        const user = getCurrentUser();
+        if (user.role !== 'responder' && user.role !== 'admin') {
+            redirectToDashboard();
+        }
+
+        let currentEmergencyId = null;
+
+        function initDashboard() {
+            document.getElementById('userName').textContent = `${user.firstName} ${user.lastName}`;
+            document.getElementById('userAvatar').textContent = user.firstName.charAt(0).toUpperCase();
+
+            loadEmergencies();
+        }
+
+        function loadEmergencies() {
+            const allEmergencies = JSON.parse(localStorage.getItem('emergencies') || '[]');
+            const emergencies = allEmergencies.filter(e => 
+                e.status === 'pending' || e.status === 'acknowledged' || e.status === 'responding'
+            );
+            
+            // Update stats
+            const myAssignments = emergencies.filter(e => e.assignedResponderId === user.id);
+            document.getElementById('activeEmergencies').textContent = emergencies.length;
+            document.getElementById('myAssignments').textContent = myAssignments.length;
+            document.getElementById('responding').textContent = 
+                emergencies.filter(e => e.status === 'responding').length;
+            
+            // Get resolved today
+            const today = new Date().toDateString();
+            const resolvedToday = allEmergencies.filter(e => 
+                e.status === 'resolved' && e.resolvedAt && new Date(e.resolvedAt).toDateString() === today
+            ).length;
+            document.getElementById('resolved').textContent = resolvedToday;
+
+            // Update table
+            const tbody = document.getElementById('emergenciesTableBody');
+            
+            if (emergencies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No active emergencies</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = emergencies.map(emergency => `
+                <tr>
+                    <td>#${emergency.id}</td>
+                    <td>${emergency.typeName || 'N/A'}</td>
+                    <td>${emergency.title}</td>
+                    <td>${emergency.reporterName}</td>
+                    <td><span class="badge ${getPriorityBadge(emergency.priority)}">${emergency.priority}</span></td>
+                    <td><span class="badge ${getStatusBadge(emergency.status)}">${emergency.status}</span></td>
+                    <td>${formatDate(emergency.createdAt)}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="viewEmergency(${emergency.id})" style="margin-right: 5px;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${!emergency.assignedResponderId || emergency.assignedResponderId === user.id ? `
+                            <button class="btn btn-primary" onclick="openStatusModal(${emergency.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function viewEmergency(id) {
+            const emergency = getEmergencyById(id);
+            if (!emergency) return;
+
+            const detailsHtml = `
+                <div style="margin-bottom: 20px;">
+                    <h4>${emergency.title}</h4>
+                    <p><strong>Type:</strong> ${emergency.typeName}</p>
+                    <p><strong>Status:</strong> <span class="badge ${getStatusBadge(emergency.status)}">${emergency.status}</span></p>
+                    <p><strong>Priority:</strong> <span class="badge ${getPriorityBadge(emergency.priority)}">${emergency.priority}</span></p>
+                    <p><strong>Description:</strong> ${emergency.description || 'N/A'}</p>
+                    <p><strong>Location:</strong> ${emergency.address || 'N/A'}</p>
+                    <p><strong>Reporter:</strong> ${emergency.reporterName}</p>
+                    <p><strong>Contact:</strong> ${emergency.reporterPhone}</p>
+                    <p><strong>Victims:</strong> ${emergency.victimCount || 0}</p>
+                    <p><strong>Reported:</strong> ${formatDate(emergency.createdAt)}</p>
+                    ${emergency.assignedResponderName ? `<p><strong>Assigned Responder:</strong> ${emergency.assignedResponderName}</p>` : ''}
+                </div>
+                ${emergency.updates && emergency.updates.length > 0 ? `
+                    <div>
+                        <h4>Updates</h4>
+                        ${emergency.updates.map(update => `
+                            <div style="background: #f8f9fa; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                                <p style="margin: 0;"><strong>${update.userName}</strong> - ${formatDate(update.timestamp)}</p>
+                                <p style="margin: 5px 0 0;">${update.message}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('emergencyDetails').innerHTML = detailsHtml;
+            document.getElementById('emergencyModal').classList.add('active');
+        }
+
+        function openStatusModal(id) {
+            currentEmergencyId = id;
+            document.getElementById('statusEmergencyId').value = id;
+            document.getElementById('statusModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('emergencyModal').classList.remove('active');
+        }
+
+        function closeStatusModal() {
+            document.getElementById('statusModal').classList.remove('active');
+            document.getElementById('statusForm').reset();
+        }
+
+        document.getElementById('statusForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('statusEmergencyId').value;
+            const status = document.getElementById('newStatus').value;
+            const message = document.getElementById('statusMessage').value;
+
+            const success = updateEmergencyStatus(id, status, message);
+            
+            if (success) {
+                showAlert('Status updated successfully', 'success');
+                closeStatusModal();
+                loadEmergencies();
+            } else {
+                showAlert('Failed to update status', 'danger');
+            }
+        });
+
+        initDashboard();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadEmergencies, 30000);
+    </script>
+</body>
+</html>
