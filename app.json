@@ -1,0 +1,59 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+{
+  "expo": {
+    "name": "Barangay Emergency",
+    "slug": "barangay-emergency",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.barangay.emergency",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to report emergencies accurately.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos of emergencies.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to attach emergency photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.barangay.emergency",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Barangay Emergency to use your location to report emergencies."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you attach emergency images."
+        }
+      ]
+    ]
+  }
+}
