@@ -1,0 +1,253 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Barangay Emergency Response</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-shield-alt"></i> Admin Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="admin-dashboard.html" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="emergency-contacts.html"><i class="fas fa-phone"></i> Contacts</a></li>
+                <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h2>Admin Dashboard</h2>
+                <div class="user-menu">
+                    <span id="userName">Loading...</span>
+                    <div class="user-avatar" id="userAvatar">A</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="totalEmergencies">0</h3>
+                            <p>Total Emergencies</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="pendingEmergencies">0</h3>
+                            <p>Pending</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon secondary">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3 id="totalResponders">0</h3>
+                            <p>Responders</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Emergencies</h3>
+                        <button class="btn btn-secondary" onclick="loadEmergencies()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Reporter</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emergenciesTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Assign Responder Modal -->
+    <div id="assignModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Assign Responder</h3>
+                <button class="close-modal" onclick="closeAssignModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="assignAlertContainer"></div>
+                <form id="assignForm">
+                    <input type="hidden" id="assignEmergencyId">
+                    <div class="form-group">
+                        <label for="responderId">Select Responder</label>
+                        <select id="responderId" required>
+                            <option value="">Loading responders...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Assign Responder</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if (!requireAuth()) {
+            throw new Error('Not authenticated');
+        }
+
+        const user = getCurrentUser();
+        if (user.role !== 'admin') {
+            redirectToDashboard();
+        }
+
+        let responders = [];
+
+        function initDashboard() {
+            document.getElementById('userName').textContent = `${user.firstName} ${user.lastName}`;
+            document.getElementById('userAvatar').textContent = user.firstName.charAt(0).toUpperCase();
+
+            loadStatistics();
+            loadEmergencies();
+            loadResponders();
+        }
+
+        function loadStatistics() {
+            const emergencies = JSON.parse(localStorage.getItem('emergencies') || '[]');
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+
+            document.getElementById('totalEmergencies').textContent = emergencies.length;
+            
+            const pending = emergencies.filter(e => e.status === 'pending');
+            document.getElementById('pendingEmergencies').textContent = pending.length;
+
+            document.getElementById('totalUsers').textContent = users.length;
+            
+            const respondersCount = users.filter(u => u.role === 'responder').length;
+            document.getElementById('totalResponders').textContent = respondersCount;
+        }
+
+        function loadEmergencies() {
+            const emergencies = JSON.parse(localStorage.getItem('emergencies') || '[]')
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 10);
+            
+            const tbody = document.getElementById('emergenciesTableBody');
+            
+            if (emergencies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No emergencies found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = emergencies.map(emergency => `
+                <tr>
+                    <td>#${emergency.id}</td>
+                    <td>${emergency.typeName || 'N/A'}</td>
+                    <td>${emergency.title}</td>
+                    <td>${emergency.reporterName}</td>
+                    <td><span class="badge ${getStatusBadge(emergency.status)}">${emergency.status}</span></td>
+                    <td><span class="badge ${getPriorityBadge(emergency.priority)}">${emergency.priority}</span></td>
+                    <td>
+                        ${!emergency.assignedResponderId ? `
+                            <button class="btn btn-primary" onclick="openAssignModal(${emergency.id})">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                        ` : `
+                            <span style="color: var(--success-color);">
+                                <i class="fas fa-check"></i> Assigned
+                            </span>
+                        `}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function loadResponders() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            responders = users.filter(u => u.role === 'responder' && u.isActive);
+            
+            const select = document.getElementById('responderId');
+            
+            if (responders.length === 0) {
+                select.innerHTML = '<option value="">No responders available</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">Select a responder...</option>' + 
+                responders.map(r => `
+                    <option value="${r.id}">${r.firstName} ${r.lastName} - ${r.barangay || 'N/A'}</option>
+                `).join('');
+        }
+
+        function openAssignModal(emergencyId) {
+            document.getElementById('assignEmergencyId').value = emergencyId;
+            document.getElementById('assignModal').classList.add('active');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.remove('active');
+            document.getElementById('assignForm').reset();
+        }
+
+        document.getElementById('assignForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const emergencyId = document.getElementById('assignEmergencyId').value;
+            const responderId = document.getElementById('responderId').value;
+
+            const success = assignResponder(emergencyId, responderId);
+            
+            if (success) {
+                showAlert('Responder assigned successfully', 'success');
+                closeAssignModal();
+                loadEmergencies();
+            } else {
+                showAlert('Failed to assign responder', 'danger');
+            }
+        });
+
+        initDashboard();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadStatistics();
+            loadEmergencies();
+        }, 30000);
+    </script>
+</body>
+</html>
