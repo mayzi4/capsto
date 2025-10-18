@@ -1,0 +1,189 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Emergency - Barangay Emergency Response</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-shield-alt"></i> Emergency System</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="citizen-dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="report-emergency.html" class="active"><i class="fas fa-exclamation-triangle"></i> Report Emergency</a></li>
+                <li><a href="my-emergencies.html"><i class="fas fa-list"></i> My Emergencies</a></li>
+                <li><a href="emergency-contacts.html"><i class="fas fa-phone"></i> Emergency Contacts</a></li>
+                <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h2>Report Emergency</h2>
+                <div class="user-menu">
+                    <span id="userName">Loading...</span>
+                    <div class="user-avatar" id="userAvatar">C</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Emergency Report Form</h3>
+                    </div>
+                    <div id="alertContainer"></div>
+                    
+                    <form id="emergencyForm">
+                        <div class="form-group">
+                            <label for="typeId">Emergency Type *</label>
+                            <select id="typeId" name="typeId" required>
+                                <option value="">Select emergency type...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="title">Title *</label>
+                            <input type="text" id="title" name="title" required placeholder="Brief description of the emergency">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" rows="4" placeholder="Provide detailed information about the emergency"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="priority">Priority *</label>
+                            <select id="priority" name="priority" required>
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="victimCount">Number of Victims</label>
+                            <input type="number" id="victimCount" name="victimCount" min="0" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Location *</label>
+                            <button type="button" class="btn btn-secondary" onclick="getCurrentLocation()">
+                                <i class="fas fa-map-marker-alt"></i> Use Current Location
+                            </button>
+                            <div style="margin-top: 10px;">
+                                <input type="text" id="address" name="address" placeholder="Address will be auto-filled or enter manually" required>
+                                <input type="hidden" id="latitude" name="latitude">
+                                <input type="hidden" id="longitude" name="longitude">
+                            </div>
+                            <small style="color: var(--gray);">Click button to get your current location or enter address manually</small>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 30px;">
+                            <button type="submit" class="btn btn-primary btn-large">
+                                <i class="fas fa-paper-plane"></i> Submit Emergency Report
+                            </button>
+                            <a href="citizen-dashboard.html" class="btn btn-outline btn-large">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if (!requireAuth()) {
+            throw new Error('Not authenticated');
+        }
+
+        const user = getCurrentUser();
+
+        function initPage() {
+            document.getElementById('userName').textContent = `${user.firstName} ${user.lastName}`;
+            document.getElementById('userAvatar').textContent = user.firstName.charAt(0).toUpperCase();
+
+            loadEmergencyTypes();
+        }
+
+        function loadEmergencyTypes() {
+            const types = JSON.parse(localStorage.getItem('emergencyTypes') || '[]');
+            const select = document.getElementById('typeId');
+            
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.id;
+                option.textContent = type.name;
+                option.dataset.name = type.name;
+                select.appendChild(option);
+            });
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showAlert('Geolocation is not supported by your browser', 'danger');
+                return;
+            }
+
+            showAlert('Getting your location...', 'success');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    document.getElementById('latitude').value = lat;
+                    document.getElementById('longitude').value = lng;
+                    document.getElementById('address').value = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+
+                    showAlert('Location captured successfully! You can edit the address if needed.', 'success');
+                },
+                (error) => {
+                    showAlert('Unable to get your location. Please enter address manually.', 'danger');
+                    console.error('Geolocation error:', error);
+                }
+            );
+        }
+
+        document.getElementById('emergencyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const typeSelect = document.getElementById('typeId');
+            const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+            
+            const emergencyData = {
+                typeId: parseInt(typeSelect.value),
+                typeName: selectedOption.dataset.name,
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                priority: document.getElementById('priority').value,
+                victimCount: parseInt(document.getElementById('victimCount').value) || 0,
+                latitude: document.getElementById('latitude').value || '0',
+                longitude: document.getElementById('longitude').value || '0',
+                address: document.getElementById('address').value
+            };
+
+            const result = createEmergency(emergencyData);
+            
+            if (result) {
+                showAlert('Emergency reported successfully! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'citizen-dashboard.html';
+                }, 2000);
+            } else {
+                showAlert('Failed to report emergency. Please try again.', 'danger');
+            }
+        });
+
+        initPage();
+    </script>
+</body>
+</html>
