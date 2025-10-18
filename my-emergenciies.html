@@ -1,0 +1,197 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Emergencies - Barangay Emergency Response</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-shield-alt"></i> Emergency System</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="citizen-dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="report-emergency.html"><i class="fas fa-exclamation-triangle"></i> Report Emergency</a></li>
+                <li><a href="my-emergencies.html" class="active"><i class="fas fa-list"></i> My Emergencies</a></li>
+                <li><a href="emergency-contacts.html"><i class="fas fa-phone"></i> Emergency Contacts</a></li>
+                <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h2>My Emergencies</h2>
+                <div class="user-menu">
+                    <span id="userName">Loading...</span>
+                    <div class="user-avatar" id="userAvatar">C</div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>All My Emergency Reports</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="statusFilter" onchange="filterEmergencies()" style="padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="acknowledged">Acknowledged</option>
+                                <option value="responding">Responding</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                            <a href="report-emergency.html" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> New Emergency
+                            </a>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Responder</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emergenciesTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Emergency Details Modal -->
+    <div id="emergencyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Emergency Details</h3>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="emergencyDetails"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if (!requireAuth()) {
+            throw new Error('Not authenticated');
+        }
+
+        const user = getCurrentUser();
+        let allEmergencies = [];
+
+        function initPage() {
+            document.getElementById('userName').textContent = `${user.firstName} ${user.lastName}`;
+            document.getElementById('userAvatar').textContent = user.firstName.charAt(0).toUpperCase();
+
+            loadEmergencies();
+        }
+
+        function loadEmergencies() {
+            allEmergencies = getEmergencies();
+            displayEmergencies(allEmergencies);
+        }
+
+        function displayEmergencies(emergencies) {
+            const tbody = document.getElementById('emergenciesTableBody');
+            
+            if (emergencies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No emergencies found. <a href="report-emergency.html">Report one now</a></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = emergencies.map(emergency => `
+                <tr>
+                    <td>#${emergency.id}</td>
+                    <td>${emergency.typeName || 'N/A'}</td>
+                    <td>${emergency.title}</td>
+                    <td><span class="badge ${getStatusBadge(emergency.status)}">${emergency.status}</span></td>
+                    <td><span class="badge ${getPriorityBadge(emergency.priority)}">${emergency.priority}</span></td>
+                    <td>${emergency.assignedResponderName || 'Not assigned'}</td>
+                    <td>${formatDate(emergency.createdAt)}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="viewEmergency(${emergency.id})">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterEmergencies() {
+            const status = document.getElementById('statusFilter').value;
+            
+            if (status === '') {
+                displayEmergencies(allEmergencies);
+            } else {
+                const filtered = allEmergencies.filter(e => e.status === status);
+                displayEmergencies(filtered);
+            }
+        }
+
+        function viewEmergency(id) {
+            const emergency = getEmergencyById(id);
+            if (!emergency) return;
+
+            const detailsHtml = `
+                <div style="margin-bottom: 20px;">
+                    <h4>${emergency.title}</h4>
+                    <p><strong>Type:</strong> ${emergency.typeName}</p>
+                    <p><strong>Status:</strong> <span class="badge ${getStatusBadge(emergency.status)}">${emergency.status}</span></p>
+                    <p><strong>Priority:</strong> <span class="badge ${getPriorityBadge(emergency.priority)}">${emergency.priority}</span></p>
+                    <p><strong>Description:</strong> ${emergency.description || 'N/A'}</p>
+                    <p><strong>Location:</strong> ${emergency.address || 'N/A'}</p>
+                    <p><strong>Victims:</strong> ${emergency.victimCount || 0}</p>
+                    <p><strong>Reported:</strong> ${formatDate(emergency.createdAt)}</p>
+                    ${emergency.assignedResponderName ? `
+                        <p><strong>Assigned Responder:</strong> ${emergency.assignedResponderName}</p>
+                    ` : '<p><strong>Status:</strong> Waiting for responder assignment</p>'}
+                    ${emergency.resolvedAt ? `<p><strong>Resolved:</strong> ${formatDate(emergency.resolvedAt)}</p>` : ''}
+                </div>
+                ${emergency.updates && emergency.updates.length > 0 ? `
+                    <div>
+                        <h4>Updates & Timeline</h4>
+                        ${emergency.updates.map(update => `
+                            <div style="background: #f8f9fa; padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid var(--primary-color);">
+                                <p style="margin: 0;"><strong>${update.userName}</strong></p>
+                                <p style="margin: 5px 0 0; font-size: 0.9rem; color: var(--gray);">${formatDate(update.timestamp)}</p>
+                                <p style="margin: 5px 0 0;">${update.message}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('emergencyDetails').innerHTML = detailsHtml;
+            document.getElementById('emergencyModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('emergencyModal').classList.remove('active');
+        }
+
+        initPage();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadEmergencies, 30000);
+    </script>
+</body>
+</html>
