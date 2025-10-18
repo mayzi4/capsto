@@ -1,0 +1,180 @@
+Almost out of storage … If you run out of space, you can't save to Drive or back up Google Photos.
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║     MYSQL DATABASE - QUICK REFERENCE                           ║
+║     Barangay Emergency Response System                         ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+🚀 QUICK SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Start MySQL in XAMPP
+2. Open phpMyAdmin: http://localhost/phpmyadmin
+3. Click "Import" tab
+4. Choose file: database.sql
+5. Click "Go"
+6. Done! ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 DATABASE INFO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Database Name: barangay_emergency
+Tables: 5
+Views: 2
+Stored Procedures: 3
+Triggers: 1
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 TABLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. users                - User accounts
+2. emergency_types      - Emergency categories
+3. emergencies          - Emergency reports
+4. emergency_updates    - Status updates
+5. emergency_contacts   - Emergency hotlines
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔐 TEST ACCOUNTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Admin:
+  Email: admin@barangay.local
+  Password: admin123
+  ID: 1
+
+Responder:
+  Email: responder@barangay.local
+  Password: responder123
+  ID: 2
+
+Citizen:
+  Email: citizen@barangay.local
+  Password: citizen123
+  ID: 3
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 USEFUL QUERIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+View all emergencies:
+  SELECT * FROM emergency_details;
+
+View pending emergencies:
+  SELECT * FROM emergency_details WHERE status = 'pending';
+
+View statistics:
+  SELECT * FROM emergency_statistics;
+
+Get user's emergencies:
+  SELECT * FROM emergency_details WHERE reporter_id = 3;
+
+Get today's emergencies:
+  SELECT * FROM emergency_details WHERE DATE(created_at) = CURDATE();
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚙️ STORED PROCEDURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create emergency:
+  CALL create_emergency(reporter_id, type_id, title, desc, 
+                        lat, lng, address, priority, victims);
+
+Update status:
+  CALL update_emergency_status(emergency_id, user_id, 
+                                status, message);
+
+Assign responder:
+  CALL assign_responder(emergency_id, responder_id, admin_id);
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔌 CONNECTION INFO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Host: localhost
+Database: barangay_emergency
+User: root
+Password: (empty or your MySQL password)
+Port: 3306
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 SAMPLE DATA INCLUDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 3 test users (admin, responder, citizen)
+✅ 10 emergency types (Fire, Medical, Crime, etc.)
+✅ 8 emergency contacts (911, Police, Fire, etc.)
+✅ 2 sample emergencies
+✅ Sample updates
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛠️ COMMON OPERATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add user:
+  INSERT INTO users (email, password, first_name, last_name, role)
+  VALUES ('user@example.com', 'password', 'John', 'Doe', 'citizen');
+
+Add emergency:
+  CALL create_emergency(3, 1, 'Fire', 'Building fire', 
+                        14.5995, 120.9842, '123 St', 'critical', 2);
+
+Update status:
+  CALL update_emergency_status(1, 2, 'responding', 'On the way');
+
+View user:
+  SELECT * FROM users WHERE email = 'citizen@barangay.local';
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 BACKUP & RESTORE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backup:
+  mysqldump -u root -p barangay_emergency > backup.sql
+
+Restore:
+  mysql -u root -p barangay_emergency < backup.sql
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 RESET DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To start fresh:
+  1. DROP DATABASE barangay_emergency;
+  2. Re-import database.sql
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Full guide: DATABASE_SETUP.md
+SQL file: database.sql
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Database ready to use!
